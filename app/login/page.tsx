@@ -1,44 +1,63 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useAuth } from "@/components/auth-provider"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Facebook, FuelIcon as GasPump } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Facebook, FuelIcon as GasPump, Github } from "lucide-react";
+import supabase from "@/utils/supabase/client/supabase";
+import { useAuth } from "@/components/provider/AuthClientProvider";
+import LoadingPage from "@/components/ui/LoadingPage";
 
 export default function LoginPage() {
-  const { login, isLoading } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [phone, setPhone] = useState("")
-  const [otp, setOtp] = useState("")
-  const [showOtpField, setShowOtpField] = useState(false)
+  const { login, isLoading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtpField, setShowOtpField] = useState(false);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    await login("email", { email, name: email.split("@")[0] })
-  }
+    e.preventDefault();
+    await login("email", { email, name: email.split("@")[0] });
+  };
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!showOtpField) {
-      setShowOtpField(true)
-      return
+      setShowOtpField(true);
+      return;
     }
-    await login("phone", { phone, name: `User ${phone.slice(-4)}` })
-  }
+    await login("phone", { phone, name: `User ${phone.slice(-4)}` });
+  };
 
   const handleSocialLogin = async (provider: string) => {
-    await login(provider, {
-      email: `user@${provider}.com`,
-      name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-    })
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `http://localhost:3000/auth/callback`,
+      },
+    });
+    // await login(provider, {
+    //   email: `user@${provider}.com`,
+    //   name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
+    // });
+  };
+
+  if (isLoading) {
+    return <LoadingPage />;
   }
 
   return (
@@ -49,7 +68,9 @@ export default function LoginPage() {
             <GasPump className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">FuelTrack</h1>
-          <p className="text-muted-foreground">Track your vehicle's fuel efficiency</p>
+          <p className="text-muted-foreground">
+            Track your vehicle's fuel efficiency
+          </p>
         </div>
 
         <Tabs defaultValue="email" className="w-full">
@@ -61,8 +82,12 @@ export default function LoginPage() {
           <TabsContent value="email" className="animate-slide-up">
             <Card className="border-none shadow-lg">
               <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-                <CardDescription className="text-center">Enter your email to sign in to your account</CardDescription>
+                <CardTitle className="text-2xl text-center">
+                  Welcome back
+                </CardTitle>
+                <CardDescription className="text-center">
+                  Enter your email to sign in to your account
+                </CardDescription>
               </CardHeader>
               <form onSubmit={handleEmailLogin}>
                 <CardContent className="space-y-4">
@@ -81,7 +106,10 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <Link href="#" className="text-sm text-primary hover:underline">
+                      <Link
+                        href="#"
+                        className="text-sm text-primary hover:underline"
+                      >
                         Forgot password?
                       </Link>
                     </div>
@@ -95,7 +123,11 @@ export default function LoginPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                  <Button
+                    type="submit"
+                    className="w-full h-11"
+                    disabled={isLoading}
+                  >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
                 </CardFooter>
@@ -106,7 +138,9 @@ export default function LoginPage() {
           <TabsContent value="phone" className="animate-slide-up">
             <Card className="border-none shadow-lg">
               <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl text-center">Phone login</CardTitle>
+                <CardTitle className="text-2xl text-center">
+                  Phone login
+                </CardTitle>
                 <CardDescription className="text-center">
                   Enter your phone number to receive a verification code
                 </CardDescription>
@@ -141,8 +175,16 @@ export default function LoginPage() {
                   )}
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                    {isLoading ? "Verifying..." : showOtpField ? "Verify OTP" : "Send OTP"}
+                  <Button
+                    type="submit"
+                    className="w-full h-11"
+                    disabled={isLoading}
+                  >
+                    {isLoading
+                      ? "Verifying..."
+                      : showOtpField
+                      ? "Verify OTP"
+                      : "Send OTP"}
                   </Button>
                 </CardFooter>
               </form>
@@ -155,12 +197,19 @@ export default function LoginPage() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Button variant="outline" className="h-11" onClick={() => handleSocialLogin("google")} disabled={isLoading}>
+          <Button
+            variant="outline"
+            className="h-11"
+            onClick={() => handleSocialLogin("google")}
+            disabled={isLoading}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -179,13 +228,17 @@ export default function LoginPage() {
             </svg>
             Google
           </Button>
-          <Button variant="outline" className="h-11" onClick={() => handleSocialLogin("facebook")} disabled={isLoading}>
-            <Facebook className="mr-2 h-4 w-4" />
-            Facebook
+          <Button
+            variant="outline"
+            className="h-11"
+            onClick={() => handleSocialLogin("github")}
+            disabled={isLoading}
+          >
+            <Github className="mr-2 h-4 w-4" />
+            Github
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
