@@ -70,7 +70,7 @@ export default function VehiclesPage() {
                       alt={vehicle.name}
                       className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent"></div>
                     <div className="absolute bottom-3 left-3">
                       <Badge className="bg-primary/90 hover:bg-primary">{vehicle.type}</Badge>
                     </div>

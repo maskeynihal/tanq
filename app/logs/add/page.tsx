@@ -365,7 +365,7 @@ export default function AddLogPage() {
 
         <form ref={formRef} id="add-log-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Vehicle Section */}
-          <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+          <div className="bg-card rounded-lg border shadow-2xs overflow-hidden">
             <div
               className="flex items-center justify-between p-4 cursor-pointer"
               onClick={() => toggleSection("vehicle")}
@@ -543,7 +543,7 @@ export default function AddLogPage() {
           </div>
 
           {/* Fuel Section */}
-          <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+          <div className="bg-card rounded-lg border shadow-2xs overflow-hidden">
             <div className="flex items-center justify-between p-4 cursor-pointer" onClick={() => toggleSection("fuel")}>
               <div className="flex items-center gap-2">
                 <Droplets className="h-5 w-5 text-primary" />
@@ -663,7 +663,7 @@ export default function AddLogPage() {
           </div>
 
           {/* Additional Section */}
-          <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+          <div className="bg-card rounded-lg border shadow-2xs overflow-hidden">
             <div
               className="flex items-center justify-between p-4 cursor-pointer"
               onClick={() => toggleSection("additional")}
@@ -715,7 +715,7 @@ export default function AddLogPage() {
           </div>
 
           {/* Summary Card */}
-          <div ref={summaryRef} className="bg-card rounded-lg border shadow-sm overflow-hidden">
+          <div ref={summaryRef} className="bg-card rounded-lg border shadow-2xs overflow-hidden">
             <div className="p-4">
               <h2 className="text-lg font-medium mb-3">Summary</h2>
               <div className="space-y-2 text-sm">

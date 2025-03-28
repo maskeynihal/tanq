@@ -74,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <header
         className={cn(
           "fixed top-0 left-0 right-0 z-50 flex h-16 items-center gap-4 transition-all duration-200 backdrop-blur-md px-4",
-          scrolled ? "bg-background/90 border-b shadow-sm" : "bg-transparent"
+          scrolled ? "bg-background/90 border-b shadow-2xs" : "bg-transparent"
         )}
       >
         <div className="flex items-center gap-3">

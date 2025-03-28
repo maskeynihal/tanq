@@ -48,12 +48,8 @@ export function ThemeProvider({
 
     localStorage.setItem("fueltrack_theme", theme);
 
-    console.log({ theme, attribute });
-
     if (theme === "system") {
       const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-      console.log("isDark", isDark);
 
       document.documentElement.setAttribute(
         attribute,

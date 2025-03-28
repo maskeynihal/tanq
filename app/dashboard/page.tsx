@@ -84,7 +84,7 @@ export default function DashboardPage() {
                     variant={activeVehicle === "all" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setActiveVehicle("all")}
-                    className="flex-shrink-0"
+                    className="shrink-0"
                   >
                     All Vehicles
                   </Button>
@@ -94,7 +94,7 @@ export default function DashboardPage() {
                       variant={activeVehicle === vehicle.id ? "default" : "outline"}
                       size="sm"
                       onClick={() => setActiveVehicle(vehicle.id)}
-                      className="flex-shrink-0"
+                      className="shrink-0"
                     >
                       {vehicle.name}
                     </Button>
