@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect } from "react";
 
-type Theme = "light" | "dark" | "system"
+type Theme = "light" | "dark" | "system";
 
 type ThemeContextType = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-}
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: "system",
   setTheme: () => {},
-})
+});
 
 export function ThemeProvider({
   attribute,
@@ -23,47 +23,58 @@ export function ThemeProvider({
   enableSystem = true,
   disableTransitionOnChange = false,
 }: {
-  attribute: string
-  defaultTheme?: Theme
-  children: React.ReactNode
-  enableSystem?: boolean
-  disableTransitionOnChange?: boolean
+  attribute: string;
+  defaultTheme?: Theme;
+  children: React.ReactNode;
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
 }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setTheme] = useState<Theme>("dark"); // Start with "dark" on first render
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedTheme = localStorage.getItem("fueltrack_theme") as Theme | null
-      if (storedTheme) {
-        return storedTheme
-      } else {
-        return defaultTheme || "system"
-      }
+      const storedTheme = localStorage.getItem(
+        "fueltrack_theme"
+      ) as Theme | null;
+      const resolvedTheme = storedTheme || defaultTheme || "dark";
+      setTheme(resolvedTheme);
     }
-    return defaultTheme || "system"
-  })
+  }, [defaultTheme]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
-      return
+      return;
     }
 
-    localStorage.setItem("fueltrack_theme", theme)
+    localStorage.setItem("fueltrack_theme", theme);
+
+    console.log({ theme, attribute });
 
     if (theme === "system") {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      document.documentElement.setAttribute(attribute, isDark ? "dark" : "light")
-    } else if (theme) {
-      document.documentElement.setAttribute(attribute, theme)
-    }
-  }, [theme, attribute])
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+      console.log("isDark", isDark);
+
+      document.documentElement.setAttribute(
+        attribute,
+        isDark ? "dark" : "light"
+      );
+    } else if (theme) {
+      document.documentElement.setAttribute(attribute, theme);
+    }
+  }, [theme, attribute]);
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export const useTheme = () => {
-  const context = useContext(ThemeContext)
+  const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
-  return context
-}
-
+  return context;
+};

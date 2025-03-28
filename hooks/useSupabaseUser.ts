@@ -7,6 +7,7 @@ import supabase from "@/utils/supabase/client/supabase";
 
 const fetchSupabaseUser = async () => {
   const { data, error } = await supabase.auth.getUser();
+
   if (error) {
     throw new Error(error.message);
   }
@@ -16,7 +17,9 @@ const fetchSupabaseUser = async () => {
 interface UseSupabaseUserOptions
   extends UndefinedInitialDataOptions<User, Error, User, string[]> {}
 
-export default function useSupabaseUser(options?: UseSupabaseUserOptions) {
+export default function useSupabaseUser(
+  options?: Omit<UseSupabaseUserOptions, "queryFn" | "queryKey">
+) {
   return useQuery({
     ...(options && options),
     queryFn: fetchSupabaseUser,

@@ -99,7 +99,11 @@
 }
 
 .gradient-bg {
-  background: linear-gradient(to right, hsl(var(--primary)), hsl(260, 70%, 70%));
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary)),
+    hsl(260, 70%, 70%)
+  );
 }
 
 .card-hover {
@@ -123,23 +127,43 @@
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary) / 0.5));
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 0.5)
+  );
 }
 
 .stat-card.green::before {
-  background: linear-gradient(to right, hsl(var(--chart-2)), hsl(var(--chart-2) / 0.5));
+  background: linear-gradient(
+    to right,
+    hsl(var(--chart-2)),
+    hsl(var(--chart-2) / 0.5)
+  );
 }
 
 .stat-card.orange::before {
-  background: linear-gradient(to right, hsl(var(--chart-3)), hsl(var(--chart-3) / 0.5));
+  background: linear-gradient(
+    to right,
+    hsl(var(--chart-3)),
+    hsl(var(--chart-3) / 0.5)
+  );
 }
 
 .stat-card.purple::before {
-  background: linear-gradient(to right, hsl(var(--chart-4)), hsl(var(--chart-4) / 0.5));
+  background: linear-gradient(
+    to right,
+    hsl(var(--chart-4)),
+    hsl(var(--chart-4) / 0.5)
+  );
 }
 
 .stat-card.red::before {
-  background: linear-gradient(to right, hsl(var(--chart-5)), hsl(var(--chart-5) / 0.5));
+  background: linear-gradient(
+    to right,
+    hsl(var(--chart-5)),
+    hsl(var(--chart-5) / 0.5)
+  );
 }
 
 .vehicle-card {
@@ -196,7 +220,12 @@
   left: 0;
   width: 100%;
   height: 1px;
-  background: linear-gradient(to right, hsl(var(--border)), hsl(var(--primary) / 0.5), hsl(var(--border)));
+  background: linear-gradient(
+    to right,
+    hsl(var(--border)),
+    hsl(var(--primary) / 0.5),
+    hsl(var(--border))
+  );
 }
 
 /* Custom scrollbar */
@@ -254,4 +283,3 @@
     margin-bottom: 1rem;
   }
 }
-

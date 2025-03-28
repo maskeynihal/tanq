@@ -1,26 +1,16 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { generateSampleData } from "@/lib/sample-data";
-import useSupabaseUser from "@/hooks/useSupabaseUser";
 import { User } from "@supabase/supabase-js";
+import useSupabaseUser from "@/hooks/useSupabaseUser";
 import LoadingPage from "@/components/ui/LoadingPage";
-
-// type User = {
-//   id: string;
-//   name: string;
-//   email: string;
-//   avatar?: string;
-//   provider: "google" | "facebook" | "email" | "phone";
-// };
+import useCheckSession from "@/hooks/useCheckSession";
+import { useRouter, usePathname } from "next/navigation";
+import { createContext, useContext, useEffect } from "react";
 
 type AuthContextType = {
   user: User | undefined;
   isLoading: boolean;
-  // login: (provider: string, credentials: any) => Promise<void>;
-  // logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,27 +19,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const { data: session, isFetching } = useCheckSession();
+
+  const isCheckingUserSession = isFetching;
+
+  const hasSession = Boolean(session?.data?.session);
+
   const {
     data: user,
-    isFetching,
-    isLoading: isLoading,
+    isFetching: isUserFetching,
     isError,
-  } = useSupabaseUser();
+  } = useSupabaseUser({
+    enabled: hasSession,
+  });
+
+  const isLoading = isCheckingUserSession || isUserFetching;
 
   useEffect(() => {
     if (isError) {
       router.push("/login");
     }
-  }, [isError]);
+  }, [isError, router]);
 
   useEffect(() => {
     if (user && pathname === "/login") {
       router.push("/");
     }
-  }, [user, pathname]);
+  }, [user, pathname, router]);
 
-  if (isLoading || isFetching) {
+  if (isLoading) {
     return <LoadingPage />;
+  }
+
+  if (user && pathname === "/login") {
+    return <LoadingPage message="Redirecting to your page..." />;
+  }
+
+  if (!session && pathname !== "/login") {
+    return <LoadingPage message="Redirecting to login page..." />;
   }
 
   return (

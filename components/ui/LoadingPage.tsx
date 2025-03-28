@@ -1,6 +1,10 @@
 "use client";
 
-export default function LoadingPage() {
+export default function LoadingPage({
+  message = "Pumping the gas...",
+}: {
+  message?: string;
+}) {
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center space-y-4">
@@ -23,9 +27,7 @@ export default function LoadingPage() {
             </g>
           </svg>
         </div>
-        <p className="text-lg font-medium text-muted-foreground">
-          Pumping the gas...
-        </p>
+        <p className="text-lg font-medium text-muted-foreground">{message}</p>
       </div>
     </div>
   );
