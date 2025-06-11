@@ -42,4 +42,3 @@ export type FuelEfficiency = {
   kmPerLiter?: number
   litersPer100km?: number
 }
-

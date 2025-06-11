@@ -1,9 +1,10 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { z } from "zod"
+import { createForm } from "@tanstack/react-form"
+import { zodValidator } from "@tanstack/zod-form-adapter"
 import MainLayout from "@/components/main-layout"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,63 +15,117 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { addVehicle } from "@/lib/vehicle-service"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Car, Fuel, FileText, ArrowLeft } from "lucide-react"
+import { Car, Fuel, FileText, ArrowLeft, Loader2 } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
+import { getSupabaseBrowserClient } from "@/lib/supabase"
+
+// Define the form schema using zod
+const vehicleSchema = z.object({
+  name: z.string().min(1, "Vehicle name is required"),
+  description: z.string().optional(),
+  type: z.string().min(1, "Vehicle type is required"),
+  distanceUnit: z.enum(["km", "mi"], {
+    required_error: "Distance unit is required",
+  }),
+  fuelUnit: z.enum(["liter", "gallon"], {
+    required_error: "Fuel unit is required",
+  }),
+  fuelCapacity: z.number().optional(),
+  fuelType: z.string().optional(),
+  hasTwoTanks: z.boolean().default(false),
+  isHybrid: z.boolean().default(false),
+  make: z.string().optional(),
+  model: z.string().optional(),
+  year: z.number().int().positive().optional(),
+  licensePlate: z.string().optional(),
+  vin: z.string().optional(),
+  insurancePolicy: z.string().optional(),
+  image: z.string().optional(),
+})
+
+type VehicleFormValues = z.infer<typeof vehicleSchema>
 
 export default function AddVehiclePage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    type: "car",
-    distanceUnit: "km",
-    fuelUnit: "liter",
-    fuelCapacity: "",
-    fuelType: "gasoline",
-    hasTwoTanks: false,
-    isHybrid: false,
-    make: "",
-    model: "",
-    year: "",
-    licensePlate: "",
-    vin: "",
-    insurancePolicy: "",
-    image: "",
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const supabase = getSupabaseBrowserClient()
+
+  // Create the form
+  const form = createForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      type: "car",
+      distanceUnit: "km" as const,
+      fuelUnit: "liter" as const,
+      fuelCapacity: undefined,
+      fuelType: "gasoline",
+      hasTwoTanks: false,
+      isHybrid: false,
+      make: "",
+      model: "",
+      year: undefined,
+      licensePlate: "",
+      vin: "",
+      insurancePolicy: "",
+      image: "",
+    },
+    onSubmit: async ({ value }) => {
+      await handleSubmit(value)
+    },
+    validatorAdapter: zodValidator,
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (values: VehicleFormValues) => {
     setIsSubmitting(true)
+    setSubmitError(null)
 
     try {
-      // Convert numeric fields
-      const vehicleData = {
-        ...formData,
-        fuelCapacity: formData.fuelCapacity ? Number.parseFloat(formData.fuelCapacity) : undefined,
-        year: formData.year ? Number.parseInt(formData.year) : undefined,
+      if (!user) {
+        throw new Error("User not authenticated")
       }
 
-      addVehicle(vehicleData)
+      // First, add to local storage for immediate feedback
+      const localVehicle = addVehicle(values)
 
-      // Simulate API delay
+      // Then, add to Supabase
+      const { data, error } = await supabase
+        .from("vehicles")
+        .insert({
+          user_id: user.id,
+          name: values.name,
+          description: values.description || null,
+          type: values.type,
+          image: values.image || null,
+          distance_unit: values.distanceUnit,
+          fuel_unit: values.fuelUnit,
+          fuel_capacity: values.fuelCapacity || null,
+          fuel_type: values.fuelType || null,
+          has_two_tanks: values.hasTwoTanks,
+          is_hybrid: values.isHybrid,
+          make: values.make || null,
+          model: values.model || null,
+          year: values.year || null,
+          license_plate: values.licensePlate || null,
+          vin: values.vin || null,
+          insurance_policy: values.insurancePolicy || null,
+        })
+        .select()
+
+      if (error) {
+        console.error("Error adding vehicle to Supabase:", error)
+        throw new Error(`Failed to save vehicle: ${error.message}`)
+      }
+
+      // Simulate API delay for UX
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       router.push("/vehicles")
     } catch (error) {
       console.error("Error adding vehicle:", error)
+      setSubmitError(error instanceof Error ? error.message : "Failed to add vehicle")
     } finally {
       setIsSubmitting(false)
     }
@@ -90,318 +145,456 @@ export default function AddVehiclePage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
-              <TabsTrigger value="basic" className="flex items-center gap-2">
-                <Car className="h-4 w-4" />
-                <span className="hidden sm:inline">Basic Info</span>
-              </TabsTrigger>
-              <TabsTrigger value="fuel" className="flex items-center gap-2">
-                <Fuel className="h-4 w-4" />
-                <span className="hidden sm:inline">Fuel Details</span>
-              </TabsTrigger>
-              <TabsTrigger value="additional" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Additional</span>
-              </TabsTrigger>
-            </TabsList>
+        {submitError && <div className="bg-destructive/10 text-destructive p-4 rounded-md">{submitError}</div>}
 
-            <TabsContent value="basic" className="animate-fade-in">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
-                  <CardDescription>Enter the basic details of your vehicle.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">
-                        Vehicle Name <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="name"
+        <form.Provider>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              form.handleSubmit()
+            }}
+          >
+            <Tabs defaultValue="basic" className="space-y-6">
+              <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
+                <TabsTrigger value="basic" className="flex items-center gap-2">
+                  <Car className="h-4 w-4" />
+                  <span className="hidden sm:inline">Basic Info</span>
+                </TabsTrigger>
+                <TabsTrigger value="fuel" className="flex items-center gap-2">
+                  <Fuel className="h-4 w-4" />
+                  <span className="hidden sm:inline">Fuel Details</span>
+                </TabsTrigger>
+                <TabsTrigger value="additional" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Additional</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="basic" className="animate-fade-in">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Basic Information</CardTitle>
+                    <CardDescription>Enter the basic details of your vehicle.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <form.Field
                         name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="My Car"
-                        required
-                        className="h-11"
+                        validators={{
+                          onChange: vehicleSchema.shape.name,
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>
+                              Vehicle Name <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder="My Car"
+                              className="h-11"
+                            />
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      />
+
+                      <form.Field
+                        name="type"
+                        validators={{
+                          onChange: vehicleSchema.shape.type,
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>
+                              Vehicle Type <span className="text-destructive">*</span>
+                            </Label>
+                            <Select value={field.state.value} onValueChange={field.handleChange} name={field.name}>
+                              <SelectTrigger id={field.name} className="h-11">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="car">Car</SelectItem>
+                                <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                                <SelectItem value="truck">Truck</SelectItem>
+                                <SelectItem value="suv">SUV</SelectItem>
+                                <SelectItem value="van">Van</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="type">
-                        Vehicle Type <span className="text-destructive">*</span>
-                      </Label>
-                      <Select
-                        value={formData.type}
-                        onValueChange={(value) => handleSelectChange("type", value)}
-                        required
-                      >
-                        <SelectTrigger id="type" className="h-11">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="car">Car</SelectItem>
-                          <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                          <SelectItem value="truck">Truck</SelectItem>
-                          <SelectItem value="suv">SUV</SelectItem>
-                          <SelectItem value="van">Van</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
+                    <form.Field
                       name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      placeholder="A brief description of your vehicle"
-                      rows={3}
+                      children={(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Description</Label>
+                          <Textarea
+                            id={field.name}
+                            name={field.name}
+                            value={field.state.value || ""}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            placeholder="A brief description of your vehicle"
+                            rows={3}
+                          />
+                        </div>
+                      )}
                     />
-                  </div>
 
-                  <div className="grid gap-6 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="make">Make</Label>
-                      <Input
-                        id="make"
+                    <div className="grid gap-6 md:grid-cols-3">
+                      <form.Field
                         name="make"
-                        value={formData.make}
-                        onChange={handleChange}
-                        placeholder="Toyota"
-                        className="h-11"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Make</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value || ""}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Toyota"
+                              className="h-11"
+                            />
+                          </div>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="model">Model</Label>
-                      <Input
-                        id="model"
+
+                      <form.Field
                         name="model"
-                        value={formData.model}
-                        onChange={handleChange}
-                        placeholder="Corolla"
-                        className="h-11"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Model</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value || ""}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Corolla"
+                              className="h-11"
+                            />
+                          </div>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="year">Year</Label>
-                      <Input
-                        id="year"
+
+                      <form.Field
                         name="year"
-                        type="number"
-                        value={formData.year}
-                        onChange={handleChange}
-                        placeholder="2023"
-                        className="h-11"
+                        validators={{
+                          onChange: (value) => {
+                            if (!value) return
+                            const yearNum = Number(value)
+                            if (isNaN(yearNum)) return "Year must be a number"
+                            if (yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
+                              return "Year must be between 1900 and " + (new Date().getFullYear() + 1)
+                            }
+                          },
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Year</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              type="number"
+                              value={field.state.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                field.handleChange(value ? Number(value) : undefined)
+                              }}
+                              placeholder="2023"
+                              className="h-11"
+                            />
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="image">Image URL</Label>
-                    <Input
-                      id="image"
+                    <form.Field
                       name="image"
-                      value={formData.image}
-                      onChange={handleChange}
-                      placeholder="https://example.com/image.jpg"
-                      className="h-11"
+                      children={(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Image URL</Label>
+                          <Input
+                            id={field.name}
+                            name={field.name}
+                            value={field.state.value || ""}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="h-11"
+                          />
+                        </div>
+                      )}
                     />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button type="button" onClick={() => document.querySelector('[data-value="fuel"]')?.click()}>
-                    Continue to Fuel Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                  <CardFooter className="flex justify-end">
+                    <Button type="button" onClick={() => document.querySelector('[data-value="fuel"]')?.click()}>
+                      Continue to Fuel Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="fuel" className="animate-fade-in">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fuel Information</CardTitle>
-                  <CardDescription>Enter details about the fuel system of your vehicle.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="distanceUnit">
-                        Distance Unit <span className="text-destructive">*</span>
-                      </Label>
-                      <Select
-                        value={formData.distanceUnit}
-                        onValueChange={(value) => handleSelectChange("distanceUnit", value)}
-                        required
-                      >
-                        <SelectTrigger id="distanceUnit" className="h-11">
-                          <SelectValue placeholder="Select unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="km">Kilometers (km)</SelectItem>
-                          <SelectItem value="mi">Miles (mi)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fuelUnit">
-                        Fuel Unit <span className="text-destructive">*</span>
-                      </Label>
-                      <Select
-                        value={formData.fuelUnit}
-                        onValueChange={(value) => handleSelectChange("fuelUnit", value)}
-                        required
-                      >
-                        <SelectTrigger id="fuelUnit" className="h-11">
-                          <SelectValue placeholder="Select unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="liter">Liters (L)</SelectItem>
-                          <SelectItem value="gallon">Gallons (gal)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+              <TabsContent value="fuel" className="animate-fade-in">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Fuel Information</CardTitle>
+                    <CardDescription>Enter details about the fuel system of your vehicle.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <form.Field
+                        name="distanceUnit"
+                        validators={{
+                          onChange: vehicleSchema.shape.distanceUnit,
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>
+                              Distance Unit <span className="text-destructive">*</span>
+                            </Label>
+                            <Select value={field.state.value} onValueChange={field.handleChange} name={field.name}>
+                              <SelectTrigger id={field.name} className="h-11">
+                                <SelectValue placeholder="Select unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="km">Kilometers (km)</SelectItem>
+                                <SelectItem value="mi">Miles (mi)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      />
 
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="fuelType">Fuel Type</Label>
-                      <Select
-                        value={formData.fuelType}
-                        onValueChange={(value) => handleSelectChange("fuelType", value)}
-                      >
-                        <SelectTrigger id="fuelType" className="h-11">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gasoline">Gasoline</SelectItem>
-                          <SelectItem value="diesel">Diesel</SelectItem>
-                          <SelectItem value="electric">Electric</SelectItem>
-                          <SelectItem value="hybrid">Hybrid</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <form.Field
+                        name="fuelUnit"
+                        validators={{
+                          onChange: vehicleSchema.shape.fuelUnit,
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>
+                              Fuel Unit <span className="text-destructive">*</span>
+                            </Label>
+                            <Select value={field.state.value} onValueChange={field.handleChange} name={field.name}>
+                              <SelectTrigger id={field.name} className="h-11">
+                                <SelectValue placeholder="Select unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="liter">Liters (L)</SelectItem>
+                                <SelectItem value="gallon">Gallons (gal)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fuelCapacity">Fuel Tank Capacity</Label>
-                      <Input
-                        id="fuelCapacity"
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <form.Field
+                        name="fuelType"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Fuel Type</Label>
+                            <Select
+                              value={field.state.value || ""}
+                              onValueChange={field.handleChange}
+                              name={field.name}
+                            >
+                              <SelectTrigger id={field.name} className="h-11">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="gasoline">Gasoline</SelectItem>
+                                <SelectItem value="diesel">Diesel</SelectItem>
+                                <SelectItem value="electric">Electric</SelectItem>
+                                <SelectItem value="hybrid">Hybrid</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      />
+
+                      <form.Field
                         name="fuelCapacity"
-                        type="number"
-                        step="0.1"
-                        value={formData.fuelCapacity}
-                        onChange={handleChange}
-                        placeholder="50"
-                        className="h-11"
+                        validators={{
+                          onChange: (value) => {
+                            if (!value) return
+                            const capacityNum = Number(value)
+                            if (isNaN(capacityNum)) return "Capacity must be a number"
+                            if (capacityNum <= 0) return "Capacity must be positive"
+                          },
+                        }}
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Fuel Tank Capacity</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              type="number"
+                              step="0.1"
+                              value={field.state.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                field.handleChange(value ? Number(value) : undefined)
+                              }}
+                              placeholder="50"
+                              className="h-11"
+                            />
+                            {field.state.meta.touchedErrors ? (
+                              <p className="text-sm text-destructive">{field.state.meta.touchedErrors}</p>
+                            ) : null}
+                          </div>
+                        )}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="flex items-center space-x-2 bg-muted/40 p-3 rounded-lg">
-                      <Switch
-                        id="hasTwoTanks"
-                        checked={formData.hasTwoTanks}
-                        onCheckedChange={(checked) => handleSwitchChange("hasTwoTanks", checked)}
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <form.Field
+                        name="hasTwoTanks"
+                        children={(field) => (
+                          <div className="flex items-center space-x-2 bg-muted/40 p-3 rounded-lg">
+                            <Switch id={field.name} checked={field.state.value} onCheckedChange={field.handleChange} />
+                            <Label htmlFor={field.name} className="flex-1">
+                              Has Two Fuel Tanks
+                            </Label>
+                          </div>
+                        )}
                       />
-                      <Label htmlFor="hasTwoTanks" className="flex-1">
-                        Has Two Fuel Tanks
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-muted/40 p-3 rounded-lg">
-                      <Switch
-                        id="isHybrid"
-                        checked={formData.isHybrid}
-                        onCheckedChange={(checked) => handleSwitchChange("isHybrid", checked)}
-                      />
-                      <Label htmlFor="isHybrid" className="flex-1">
-                        Is Hybrid Vehicle
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.querySelector('[data-value="basic"]')?.click()}
-                  >
-                    Back
-                  </Button>
-                  <Button type="button" onClick={() => document.querySelector('[data-value="additional"]')?.click()}>
-                    Continue
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="additional" className="animate-fade-in">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Additional Information</CardTitle>
-                  <CardDescription>Enter additional details about your vehicle (optional).</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="licensePlate">License Plate</Label>
-                      <Input
-                        id="licensePlate"
+                      <form.Field
+                        name="isHybrid"
+                        children={(field) => (
+                          <div className="flex items-center space-x-2 bg-muted/40 p-3 rounded-lg">
+                            <Switch id={field.name} checked={field.state.value} onCheckedChange={field.handleChange} />
+                            <Label htmlFor={field.name} className="flex-1">
+                              Is Hybrid Vehicle
+                            </Label>
+                          </div>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.querySelector('[data-value="basic"]')?.click()}
+                    >
+                      Back
+                    </Button>
+                    <Button type="button" onClick={() => document.querySelector('[data-value="additional"]')?.click()}>
+                      Continue
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="additional" className="animate-fade-in">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Information</CardTitle>
+                    <CardDescription>Enter additional details about your vehicle (optional).</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <form.Field
                         name="licensePlate"
-                        value={formData.licensePlate}
-                        onChange={handleChange}
-                        placeholder="ABC123"
-                        className="h-11"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>License Plate</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value || ""}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="ABC123"
+                              className="h-11"
+                            />
+                          </div>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="vin">VIN</Label>
-                      <Input
-                        id="vin"
-                        name="vin"
-                        value={formData.vin}
-                        onChange={handleChange}
-                        placeholder="Vehicle Identification Number"
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="insurancePolicy">Insurance Policy</Label>
-                    <Input
-                      id="insurancePolicy"
+                      <form.Field
+                        name="vin"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>VIN</Label>
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value || ""}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Vehicle Identification Number"
+                              className="h-11"
+                            />
+                          </div>
+                        )}
+                      />
+                    </div>
+
+                    <form.Field
                       name="insurancePolicy"
-                      value={formData.insurancePolicy}
-                      onChange={handleChange}
-                      placeholder="Insurance policy number"
-                      className="h-11"
+                      children={(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Insurance Policy</Label>
+                          <Input
+                            id={field.name}
+                            name={field.name}
+                            value={field.state.value || ""}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            placeholder="Insurance policy number"
+                            className="h-11"
+                          />
+                        </div>
+                      )}
                     />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.querySelector('[data-value="fuel"]')?.click()}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
-                    {isSubmitting ? "Saving..." : "Save Vehicle"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </form>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.querySelector('[data-value="fuel"]')?.click()}
+                    >
+                      Back
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </span>
+                      ) : (
+                        "Save Vehicle"
+                      )}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </form>
+        </form.Provider>
       </div>
     </MainLayout>
   )
 }
-
