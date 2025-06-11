@@ -3,6 +3,41 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          id: string
+          username: string | null
+          full_name: string | null
+          avatar_url: string | null
+          preferred_currency: string | null
+          preferred_distance_unit: string | null
+          preferred_fuel_unit: string | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          preferred_currency?: string | null
+          preferred_distance_unit?: string | null
+          preferred_fuel_unit?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          preferred_currency?: string | null
+          preferred_distance_unit?: string | null
+          preferred_fuel_unit?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+      }
       vehicles: {
         Row: {
           id: string
@@ -126,6 +161,129 @@ export interface Database {
           gas_station?: string | null
           notes?: string | null
           images?: string[] | null
+          created_at?: string
+          updated_at?: string | null
+        }
+      }
+      maintenance_logs: {
+        Row: {
+          id: string
+          vehicle_id: string
+          user_id: string
+          date: string
+          odometer: number | null
+          service_type: string
+          description: string
+          cost: number | null
+          currency: string | null
+          service_provider: string | null
+          notes: string | null
+          images: string[] | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          vehicle_id: string
+          user_id: string
+          date: string
+          odometer?: number | null
+          service_type: string
+          description: string
+          cost?: number | null
+          currency?: string | null
+          service_provider?: string | null
+          notes?: string | null
+          images?: string[] | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          vehicle_id?: string
+          user_id?: string
+          date?: string
+          odometer?: number | null
+          service_type?: string
+          description?: string
+          cost?: number | null
+          currency?: string | null
+          service_provider?: string | null
+          notes?: string | null
+          images?: string[] | null
+          created_at?: string
+          updated_at?: string | null
+        }
+      }
+      reminders: {
+        Row: {
+          id: string
+          user_id: string
+          vehicle_id: string | null
+          title: string
+          description: string | null
+          due_date: string
+          odometer_threshold: number | null
+          is_recurring: boolean | null
+          recurrence_pattern: string | null
+          is_completed: boolean | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          vehicle_id?: string | null
+          title: string
+          description?: string | null
+          due_date: string
+          odometer_threshold?: number | null
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
+          is_completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          vehicle_id?: string | null
+          title?: string
+          description?: string | null
+          due_date?: string
+          odometer_threshold?: number | null
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
+          is_completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+      }
+      user_settings: {
+        Row: {
+          user_id: string
+          theme: string | null
+          notification_preferences: Json | null
+          dashboard_layout: Json | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          user_id: string
+          theme?: string | null
+          notification_preferences?: Json | null
+          dashboard_layout?: Json | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          theme?: string | null
+          notification_preferences?: Json | null
+          dashboard_layout?: Json | null
           created_at?: string
           updated_at?: string | null
         }
